@@ -1,0 +1,91 @@
+name: Scale EKS Nodes and HPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: 'Kubernetes namespace where the HPA is located'
+        required: true
+        default: 'default'
+        type: string
+      node_group_name:
+        description: 'EKS Node Group Name'
+        required: true
+        default: 'your-node-group'
+        type: string
+      node_min_size:
+        description: 'Minimum size for scaling nodes'
+        required: true
+        default: '1'
+        type: string
+      node_max_size:
+        description: 'Maximum size for scaling nodes'
+        required: true
+        default: '2'
+        type: string
+      hpa_name:
+        description: 'Name of the HPA resource'
+        required: true
+        default: 'my-hpa'
+        type: string
+      hpa_min_size:
+        description: 'Minimum size for scaling HPA'
+        required: true
+        default: '1'
+        type: string
+      hpa_max_size:
+        description: 'Maximum size for scaling HPA'
+        required: true
+        default: '2'
+        type: string
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    outputs:
+      node_min_size: ${{ github.event.inputs.node_min_size }}
+      node_max_size: ${{ github.event.inputs.node_max_size }}
+      hpa_min_size: ${{ github.event.inputs.hpa_min_size }}
+      hpa_max_size: ${{ github.event.inputs.hpa_max_size }}
+      setup_completed: ${{ steps.setup.outputs.completed }}
+      
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2  # Modify with your region if needed
+
+      - name: Scale EKS Node Group
+        run: |
+          aws eks update-nodegroup-config \
+            --cluster-name your-cluster-name \
+            --nodegroup-name ${{ github.event.inputs.node_group_name }} \
+            --scaling-config minSize=${{ github.event.inputs.node_min_size }},maxSize=${{ github.event.inputs.node_max_size }}
+
+  scale-hpa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up kubeconfig
+        run: |
+          aws eks update-kubeconfig --name your-cluster-name --region us-west-2
+
+      - name: Scale HPA
+        run: |
+          kubectl patch hpa ${{ github.event.inputs.hpa_name }} \
+            --namespace=${{ github.event.inputs.namespace }} \
+            --patch "{\"spec\":{\"minReplicas\":${{ github.event.inputs.hpa_min_size }},\"maxReplicas\":${{ github.event.inputs.hpa_max_size }}}}"
