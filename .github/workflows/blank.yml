@@ -3,6 +3,11 @@ name: Scale EKS Nodes and HPA
 on:
   workflow_dispatch:
     inputs:
+      cluster_name:
+        description: 'EKS Cluster Name'
+        required: true
+        default: 'Mann-cd-eks'
+        type: string
       namespace:
         description: 'Kubernetes namespace where the HPA is located'
         required: true
@@ -57,12 +62,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
       - name: Scale EKS Node Group
         run: |
           aws eks update-nodegroup-config \
-            --cluster-name your-cluster-name \
+            --cluster-name ${{ github.event.inputs.cluster_name }} \
             --nodegroup-name ${{ github.event.inputs.node_group_name }} \
             --scaling-config minSize=${{ github.event.inputs.node_min_size }},maxSize=${{ github.event.inputs.node_max_size }}
 
@@ -70,12 +74,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
@@ -84,7 +87,7 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          aws eks update-kubeconfig --name your-cluster-name --region us-west-2
+          aws eks update-kubeconfig --name ${{ github.event.inputs.cluster_name }} --region ${{ secrets.AWS_REGION }}
 
       - name: Scale HPA
         run: |
