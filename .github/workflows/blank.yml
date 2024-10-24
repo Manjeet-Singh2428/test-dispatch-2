@@ -47,17 +47,16 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
     outputs:
       node_min_size: ${{ github.event.inputs.node_min_size }}
       node_max_size: ${{ github.event.inputs.node_max_size }}
       hpa_min_size: ${{ github.event.inputs.hpa_min_size }}
       hpa_max_size: ${{ github.event.inputs.hpa_max_size }}
       setup_completed: ${{ steps.setup.outputs.completed }}
-      
+
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -74,16 +73,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Install kubectl
+        uses: kubectl/action@v1.5.0
         with:
-          version: 'latest'
+          kubectl-version: 'latest'
 
       - name: Set up kubeconfig
         run: |
